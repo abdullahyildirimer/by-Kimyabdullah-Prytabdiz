@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>İnteraktif Periyodik Sistem ve Orbital Dizilimi</title>
+    <style>
+        :root {
+            --bg: #080c10; --panel: #0d1117; --border: #1c2a3a; --text: #c8d8e8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { 
+            background: var(--bg); color: var(--text); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            overflow: hidden; height: 100vh; width: 100vw; 
+        }
+        #app-container { display: flex; flex-direction: column; height: 100%; padding: 5px; gap: 5px; }
+
+        /* TABLO YAPISI */
+        #main-grid, #f-grid { display: grid; gap: 1px; justify-content: flex-start; }
+        .el { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: pointer; border: 1px solid rgba(255,255,255,0.05); position: relative; 
+            transition: transform 0.1s;
+        }
+        .el:hover { transform: scale(1.05); z-index: 10; border-color: rgba(255,255,255,0.3); }
+        .el.active { border: 1.5px solid #fff !important; box-shadow: 0 0 8px #fff; z-index: 11; }
+        .el-no { font-size: 0.35em; position: absolute; top: 1px; left: 1px; opacity: 0.8; }
+        .el-sym { font-size: 0.7em; font-weight: bold; color: #fff; }
+        .lbl { font-size: 0.35em; color: #556677; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: bold; }
+
+        /* ANALİZ PANELİ */
+        #panel { 
+            background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
+            padding: 8px; flex-grow: 1; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden;
+        }
+        #detay { display: flex; gap: 10px; margin-bottom: 8px; font-size: 0.8rem; flex-wrap: wrap; }
+        .box { background: rgba(255,255,255,0.03); padding: 2px 8px; border-left: 3px solid #555; border-radius: 2px; }
+
+        /* ORBİTAL ÇİZİMİ */
+        #orb-container { width: 100%; display: flex; flex-direction: column; gap: 2px; }
+        .orb-row { display: flex; justify-content: flex-start; align-items: center; width: 100%; margin-bottom: 1px; }
+        .orb-group { display: flex; gap: 1px; align-items: center; margin-right: 5px; }
+        .orb-label { font-size: 9px; color: #8899aa; width: 18px; text-align: right; margin-right: 2px; font-family: monospace; }
+        .orb-box { border: 1px solid #1c2a3a; background: #05080a; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #4fc3f7; }
+        
+        #tooltip { position: fixed; pointer-events: none; opacity: 0; background: #000; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 12px; z-index: 1000; border: 1px solid #444; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+    <div id="tooltip"></div>
+    <div id="app-container">
+        <div id="main-grid"></div>
+        <div id="f-grid" style="margin-top: 5px;"></div>
+        <div id="panel">
+            <div id="detay">
+                <div class="box" id="d-name">Element: -</div>
+                <div class="box" id="d-no">Atom No: -</div>
+                <div class="box" id="d-ag">Kütle: -</div>
+                <div class="box" id="d-per">Periyot: -</div>
+                <div class="box" id="d-grp">Grup: -</div>
+            </div>
+            <div id="orb-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const colors = {
+            "ALKALİ METAL": "#B36200", "TOPRAK ALKALİ METAL": "#8B5E3C",
+            "GEÇİŞ METALİ": "#707070", "AMETAL": "#5D0085",
+            "SOY GAZ": "#000050", "ZAYIF METAL": "#20B2AA",
+            "YARI METAL": "#4682B4", "LANTANİT": "#2E8B57", "AKTİNİT": "#1B801B"
+        };
+
+        const elements = [
+            [1,'H','Hidrojen',1.008,1,1,1,1,'s','AMETAL'], [2,'He','Helyum',4.003,18,1,1,18,'s','SOY GAZ'],
+            [3,'Li','Lityum',6.941,1,2,2,1,'s','ALKALİ METAL'], [4,'Be','Berilyum',9.012,2,2,2,2,'s','TOPRAK ALKALİ METAL'],
+            [5,'B','Bor',10.81,13,2,2,13,'p','YARI METAL'], [6,'C','Karbon',12.01,14,2,2,14,'p','AMETAL'],
+            [7,'N','Azot',14.01,15,2,2,15,'p','AMETAL'], [8,'O','Oksijen',16.00,16,2,2,16,'p','AMETAL'],
+            [9,'F','Flor',19.00,17,2,2,17,'p','AMETAL'], [10,'Ne','Neon',20.18,18,2,2,18,'p','SOY GAZ'],
+            [11,'Na','Sodyum',22.99,1,3,3,1,'s','ALKALİ METAL'], [12,'Mg','Magnezyum',24.31,2,3,3,2,'s','TOPRAK ALKALİ METAL'],
+            [13,'Al','Alüminyum',26.98,13,3,3,13,'p','ZAYIF METAL'], [14,'Si','Silisyum',28.09,14,3,3,14,'p','YARI METAL'],
+            [15,'P','Fosfor',30.97,15,3,3,15,'p','AMETAL'], [16,'S','Kükürt',32.06,16,3,3,16,'p','AMETAL'],
+            [17,'Cl','Klor',35.45,17,3,3,17,'p','AMETAL'], [18,'Ar','Argon',39.95,18,3,3,18,'p','SOY GAZ'],
+            [19,'K','Potasyum',39.10,1,4,4,1,'s','ALKALİ METAL'], [20,'Ca','Kalsiyum',40.08,2,4,4,2,'s','TOPRAK ALKALİ METAL'],
+            [21,'Sc','Skandiyum',44.96,3,4,4,3,'d','GEÇİŞ METALİ'], [22,'Ti','Titanyum',47.87,4,4,4,4,'d','GEÇİŞ METALİ'],
+            [23,'V','Vanadyum',50.94,5,4,4,5,'d','GEÇİŞ METALİ'], [24,'Cr','Krom',52.00,6,4,4,6,'d','GEÇİŞ METALİ'],
+            [25,'Mn','Mangan',54.94,7,4,4,7,'d','GEÇİŞ METALİ'], [26,'Fe','Demir',55.85,8,4,4,8,'d','GEÇİŞ METALİ'],
+            [27,'Co','Kobalt',58.93,9,4,4,9,'d','GEÇİŞ METALİ'], [28,'Ni','Nikel',58.69,10,4,4,10,'d','GEÇİŞ METALİ'],
+            [29,'Cu','Bakır',63.55,11,4,4,11,'d','GEÇİŞ METALİ'], [30,'Zn','Çinko',65.38,12,4,4,12,'d','GEÇİŞ METALİ'],
+            [31,'Ga','Galyum',69.72,13,4,4,13,'p','ZAYIF METAL'], [32,'Ge','Germanyum',72.63,14,4,4,14,'p','YARI METAL'],
+            [33,'As','Arsenik',74.92,15,4,4,15,'p','YARI METAL'], [34,'Se','Selenyum',78.97,16,4,4,16,'p','AMETAL'],
+            [35,'Br','Brom',79.90,17,4,4,17,'p','AMETAL'], [36,'Kr','Kripton',83.80,18,4,4,18,'p','SOY GAZ'],
+            [37,'Rb','Rubidyum',85.47,1,5,5,1,'s','ALKALİ METAL'], [38,'Sr','Stronsiyum',87.62,2,5,5,2,'s','TOPRAK ALKALİ METAL'],
+            [39,'Y','İtriyum',88.91,3,5,5,3,'d','GEÇİŞ METALİ'], [40,'Zr','Zirkonyum',91.22,4,5,5,4,'d','GEÇİŞ METALİ'],
+            [41,'Nb','Niyobyum',92.91,5,5,5,5,'d','GEÇİŞ METALİ'], [42,'Mo','Molibden',95.95,6,5,5,6,'d','GEÇİŞ METALİ'],
+            [43,'Tc','Teknesyum',98,7,5,5,7,'d','GEÇİŞ METALİ'], [44,'Ru','Rutenyum',101.1,8,5,5,8,'d','GEÇİŞ METALİ'],
+            [45,'Rh','Rodyum',102.9,9,5,5,9,'d','GEÇİŞ METALİ'], [46,'Pd','Paladyum',106.4,10,5,5,10,'d','GEÇİŞ METALİ'],
+            [47,'Ag','Gümüş',107.9,11,5,5,11,'d','GEÇİŞ METALİ'], [48,'Cd','Kadmiyum',112.4,12,5,5,12,'d','GEÇİŞ METALİ'],
+            [49,'In','İndiyum',114.8,13,5,5,13,'p','ZAYIF METAL'], [50,'Sn','Kalay',118.7,14,5,5,14,'p','ZAYIF METAL'],
+            [51,'Sb','Antimon',121.8,15,5,5,15,'p','YARI METAL'], [52,'Te','Tellür',127.6,16,5,5,16,'p','YARI METAL'],
+            [53,'I','İyot',126.9,17,5,5,17,'p','AMETAL'], [54,'Xe','Ksenon',131.3,18,5,5,18,'p','SOY GAZ'],
+            [55,'Cs','Sezyum',132.9,1,6,6,1,'s','ALKALİ METAL'], [56,'Ba','Baryum',137.3,2,6,6,2,'s','TOPRAK ALKALİ METAL'],
+            [57,'La','Lantan',138.9,3,6,8,4,'f','LANTANİT'], [58,'Ce','Seryum',140.1,3,6,8,5,'f','LANTANİT'],
+            [59,'Pr','Prasedoryum',140.9,3,6,8,6,'f','LANTANİT'], [60,'Nd','Neodimyum',144.2,3,6,8,7,'f','LANTANİT'],
+            [61,'Pm','Prometyum',145,3,6,8,8,'f','LANTANİT'], [62,'Sm','Samaryum',150.4,3,6,8,9,'f','LANTANİT'],
+            [63,'Eu','Europiyum',152.0,3,6,8,10,'f','LANTANİT'], [64,'Gd','Gadolinyum',157.3,3,6,8,11,'f','LANTANİT'],
+            [65,'Tb','Terbiyum',158.9,3,6,8,12,'f','LANTANİT'], [66,'Dy','Disprozyum',162.5,3,6,8,13,'f','LANTANİT'],
+            [67,'Ho','Holmiyum',164.9,3,6,8,14,'f','LANTANİT'], [68,'Er','Erbiyum',167.3,3,6,8,15,'f','LANTANİT'],
+            [69,'Tm','Tulyum',168.9,3,6,8,16,'f','LANTANİT'], [70,'Yb','İterbiyum',173.1,3,6,8,17,'f','LANTANİT'],
+            [71,'Lu','Lutesyum',175.0,3,6,8,18,'f','LANTANİT'], [72,'Hf','Hafniyum',178.5,4,6,6,4,'d','GEÇİŞ METALİ'],
+            [73,'Ta','Tantal',180.9,5,6,6,5,'d','GEÇİŞ METALİ'], [74,'W','Volfram',183.8,6,6,6,6,'d','GEÇİŞ METALİ'],
+            [75,'Re','Renyum',186.2,7,6,6,7,'d','GEÇİŞ METALİ'], [76,'Os','Osmiyum',190.2,8,6,6,8,'d','GEÇİŞ METALİ'],
+            [77,'Ir','İridyum',192.2,9,6,6,9,'d','GEÇİŞ METALİ'], [78,'Pt','Platin',195.1,10,6,6,10,'d','GEÇİŞ METALİ'],
+            [79,'Au','Altın',197.0,11,6,6,11,'d','GEÇİŞ METALİ'], [80,'Hg','Cıva',200.6,12,6,6,12,'d','ZAYIF METAL'],
+            [81,'Tl','Talyum',204.4,13,6,6,13,'p','ZAYIF METAL'], [82,'Pb','Kurşun',207.2,14,6,6,14,'p','ZAYIF METAL'],
+            [83,'Bi','Bismut',209.0,15,6,6,15,'p','ZAYIF METAL'], [84,'Po','Polonyum',209,16,6,6,16,'p','YARI METAL'],
+            [85,'At','Astatin',210,17,6,6,17,'p','YARI METAL'], [86,'Rn','Radon',222,18,6,6,18,'p','SOY GAZ'],
+            [87,'Fr','Fransiyum',223,1,7,7,1,'s','ALKALİ METAL'], [88,'Ra','Radyum',226,2,7,7,2,'s','TOPRAK ALKALİ METAL'],
+            [89,'Ac','Aktinyum',227,3,7,9,4,'f','AKTİNİT'], [90,'Th','Toryum',232.0,3,7,9,5,'f','AKTİNİT'],
+            [91,'Pa','Protaktinyum',231.0,3,7,9,6,'f','AKTİNİT'], [92,'U','Uranyum',238.0,3,7,9,7,'f','AKTİNİT'],
+            [93,'Np','Neptünyum',237,3,7,9,8,'f','AKTİNİT'], [94,'Pu','Plutonyum',244,3,7,9,9,'f','AKTİNİT'],
+            [95,'Am','Amerikyum',243,3,7,9,10,'f','AKTİNİT'], [96,'Cm','Küriyum',247,3,7,9,11,'f','AKTİNİT'],
+            [97,'Bk','Berkelyum',247,3,7,9,12,'f','AKTİNİT'], [98,'Cf','Kaliforniyum',251,3,7,9,13,'f','AKTİNİT'],
+            [99,'Es','Aynştaynyum',252,3,7,9,14,'f','AKTİNİT'], [100,'Fm','Fermiyum',257,3,7,9,15,'f','AKTİNİT'],
+            [101,'Md','Mendelevyum',258,3,7,9,16,'f','AKTİNİT'], [102,'No','Nobelyum',259,3,7,9,17,'f','AKTİNİT'],
+            [103,'Lr','Lavrensiyum',262,3,7,9,18,'f','AKTİNİT'], [104,'Rf','Rutherfordiyum',267,4,7,7,4,'d','GEÇİŞ METALİ'],
+            [105,'Db','Dubniyum',270,5,7,7,5,'d','GEÇİŞ METALİ'], [106,'Sg','Seaborgiyum',271,6,7,7,6,'d','GEÇİŞ METALİ'],
+            [107,'Bh','Bohriyum',270,7,7,7,7,'d','GEÇİŞ METALİ'], [108,'Hs','Hassiyum',277,8,7,7,8,'d','GEÇİŞ METALİ'],
+            [109,'Mt','Meitneriyum',278,9,7,7,9,'d','GEÇİŞ METALİ'], [110,'Ds','Darmstadtiyum',281,10,7,7,10,'d','GEÇİŞ METALİ'],
+            [111,'Rg','Röntgenyum',282,11,7,7,11,'d','GEÇİŞ METALİ'], [112,'Cn','Kopernikyum',285,12,7,7,12,'d','GEÇİŞ METALİ'],
+            [113,'Nh','Nihonyum',286,13,7,7,13,'p','ZAYIF METAL'], [114,'Fl','Flerovyum',289,14,7,7,14,'p','ZAYIF METAL'],
+            [115,'Mc','Moskovyum',290,15,7,7,15,'p','ZAYIF METAL'], [116,'Lv','Livermoryum',293,16,7,7,16,'p','ZAYIF METAL'],
+            [117,'Ts','Tennessin',294,17,7,7,17,'p','YARI METAL'], [118,'Og','Oganesson',294,18,7,7,18,'p','SOY GAZ']
+        ];
+
+        const classic = ["1A","2A","3B","4B","5B","6B","7B","8B","8B","8B","1B","2B","3A","4A","5A","6A","7A","8A"];
+        const ORB_DATA = [
+            [["1s",1],["2s",1],["2p",3],["3s",1],["3p",3],["4s",1],["3d",5],["4p",3]],
+            [["5s",1],["4d",5],["5p",3],["6s",1],["4f",7],["5d",5]],
+            [["6p",3],["7s",1],["5f",7],["6d",5],["7p",3]]
+        ];
+
+        function init() {
+            const main = document.getElementById('main-grid');
+            const fgrid = document.getElementById('f-grid');
+            
+            // Periyot ve Grup Etiketleri
+            for(let i=1; i<=18; i++) {
+                const d = document.createElement('div'); d.className='lbl'; 
+                d.style.gridColumn=i+1; d.style.gridRow=1; d.innerHTML=i+"<br>"+classic[i-1]; main.appendChild(d);
+            }
+            for(let i=1; i<=7; i++) {
+                const d = document.createElement('div'); d.className='lbl';
+                d.style.gridColumn=1; d.style.gridRow=i+1; d.innerText=i; main.appendChild(d);
+            }
+
+            elements.forEach(e => {
+                const d = document.createElement('div'); d.className='el';
+                d.style.backgroundColor = colors[e[9]];
+                const symbol = e[1];
+                if(e[6] < 8) { d.style.gridRow=e[6]+1; d.style.gridColumn=e[7]+1; main.appendChild(d); }
+                else { d.style.gridRow=e[6]-7; d.style.gridColumn=e[7]-2; fgrid.appendChild(d); }
+                d.innerHTML = `<span class="el-no">${e[0]}</span><span class="el-sym">${symbol}</span>`;
+                d.onclick = () => update(e, d, colors[e[9]]);
+                d.onmouseenter = (ev) => { 
+                    const tt = document.getElementById('tooltip');
+                    tt.innerText = e[2]; tt.style.opacity = 1;
+                };
+                d.onmousemove = (ev) => {
+                    const tt = document.getElementById('tooltip');
+                    tt.style.left = (ev.clientX+10)+'px'; tt.style.top = (ev.clientY+10)+'px';
+                };
+                d.onmouseleave = () => document.getElementById('tooltip').style.opacity = 0;
+            });
+            buildOrbitalEmpty();
+            resizer();
+        }
+
+        function buildOrbitalEmpty() {
+            const cont = document.getElementById('orb-container');
+            ORB_DATA.forEach(row => {
+                const rDiv = document.createElement('div'); rDiv.className = 'orb-row';
+                row.forEach(item => {
+                    const g = document.createElement('div'); g.className = 'orb-group';
+                    g.innerHTML = `<div class="orb-label">${item[0]}</div>`;
+                    for(let i=0; i<item[1]; i++) {
+                        const b = document.createElement('div'); b.className = 'orb-box';
+                        b.id = `orb-${item[0]}-${i}`; g.appendChild(b);
+                    }
+                    rDiv.appendChild(g);
+                });
+                cont.appendChild(rDiv);
+            });
+        }
+
+        function resizer() {
+            const w = window.innerWidth - 10;
+            const cellSize = Math.floor(w / 19.5); 
+            document.querySelectorAll('.el, .lbl').forEach(e => {
+                e.style.width = cellSize + 'px'; e.style.height = cellSize + 'px';
+            });
+            document.getElementById('main-grid').style.gridTemplateColumns = `repeat(19, ${cellSize}px)`;
+            document.getElementById('f-grid').style.gridTemplateColumns = `repeat(15, ${cellSize}px)`;
+            document.getElementById('f-grid').style.marginLeft = (cellSize * 3) + 'px';
+
+            const tabloW = cellSize * 19;
+            const orbSize = Math.floor((tabloW - 120) / 22);
+            document.querySelectorAll('.orb-box').forEach(b => {
+                b.style.width = orbSize + 'px'; b.style.height = orbSize + 'px';
+            });
+        }
+
+        function update(data, el, color) {
+            document.querySelectorAll('.el').forEach(x => x.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('d-name').innerText = "Element: " + data[2];
+            document.getElementById('d-no').innerText = "Atom No: " + data[0];
+            document.getElementById('d-no').style.borderLeftColor = color;
+            document.getElementById('d-ag').innerText = "Kütle: " + data[3];
+            document.getElementById('d-per').innerText = "Periyot: " + data[5];
+            const cls = classic[data[4]-1] || (data[0] >= 57 && data[0] <= 71 ? "Lan" : "Akt");
+            document.getElementById('d-grp').innerText = `Grup: ${data[4]} (${cls})`;
+            fillOrbitals(data[0]);
+        }
+
+        function fillOrbitals(atomNo) {
+            document.querySelectorAll('.orb-box').forEach(b => { b.innerText = ""; b.style.borderColor = "#1c2a3a"; });
+            let rem = atomNo;
+            const seq = [["1s",1],["2s",1],["2p",3],["3s",1],["3p",3],["4s",1],["3d",5],["4p",3],["5s",1],["4d",5],["5p",3],["6s",1],["4f",7],["5d",5],["6p",3],["7s",1],["5f",7],["6d",5],["7p",3]];
+            for (let [name, boxes] of seq) {
+                if (rem <= 0) break;
+                let elec = Math.min(rem, boxes * 2); rem -= elec;
+                for (let i = 0; i < boxes; i++) {
+                    const b = document.getElementById(`orb-${name}-${i}`);
+                    if(!b) continue;
+                    b.style.borderColor = "#4fc3f7"; 
+                    if (elec > i + boxes) b.innerText = "⇅";
+                    else if (elec > i) b.innerText = "↑";
+                }
+            }
+        }
+
+        window.onresize = resizer;
+        window.onload = init;
+    </script>
+</body>
+</html>
