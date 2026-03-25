@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>İnteraktif Periyodik Sistem ve Orbital Dizilimi</title>
+    <title>İnteraktif Periyodik Sistem ve Dinamik Orbital Dizilimi</title>
     <style>
         :root {
             --bg: #080c10; --panel: #0d1117; --border: #1c2a3a; --text: #c8d8e8;
@@ -12,9 +12,9 @@
         body { 
             background: var(--bg); color: var(--text); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            overflow: hidden; height: 100vh; width: 100vw; 
+            overflow-x: hidden; min-height: 100vh; width: 100vw; 
         }
-        #app-container { display: flex; flex-direction: column; height: 100%; padding: 5px; gap: 5px; }
+        #app-container { display: flex; flex-direction: column; padding: 5px; gap: 5px; }
 
         /* TABLO YAPISI */
         #main-grid, #f-grid { display: grid; gap: 1px; justify-content: flex-start; }
@@ -24,34 +24,40 @@
             transition: transform 0.1s;
         }
         .el:hover { transform: scale(1.05); z-index: 10; border-color: rgba(255,255,255,0.3); }
-        .el.active { border: 1.5px solid #fff !important; box-shadow: 0 0 8px #fff; z-index: 11; }
+        .el.active { border: 2px solid #fff !important; box-shadow: 0 0 10px #fff; z-index: 11; }
         .el-no { font-size: 0.35em; position: absolute; top: 1px; left: 1px; opacity: 0.8; }
         .el-sym { font-size: 0.7em; font-weight: bold; color: #fff; }
         .lbl { font-size: 0.35em; color: #556677; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: bold; }
 
         /* ANALİZ PANELİ */
         #panel { 
-            background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
-            padding: 8px; flex-grow: 1; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden;
+            background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+            padding: 15px; margin-top: 10px; display: flex; flex-direction: column; align-items: center;
         }
-        #detay { display: flex; gap: 10px; margin-bottom: 8px; font-size: 0.8rem; flex-wrap: wrap; }
-        .box { background: rgba(255,255,255,0.03); padding: 2px 8px; border-left: 3px solid #555; border-radius: 2px; }
+        #detay { display: flex; gap: 10px; margin-bottom: 15px; font-size: 0.9rem; flex-wrap: wrap; justify-content: center; width: 100%; }
+        .box { background: rgba(255,255,255,0.03); padding: 5px 12px; border-left: 3px solid #555; border-radius: 4px; color: #4fc3f7; font-weight: bold; }
 
         /* ORBİTAL ÇİZİMİ */
-        #orb-container { width: 100%; display: flex; flex-direction: column; gap: 2px; }
-        .orb-row { display: flex; justify-content: flex-start; align-items: center; width: 100%; margin-bottom: 1px; }
-        .orb-group { display: flex; gap: 1px; align-items: center; margin-right: 5px; }
-        .orb-label { font-size: 9px; color: #8899aa; width: 18px; text-align: right; margin-right: 2px; font-family: monospace; }
-        .orb-box { border: 1px solid #1c2a3a; background: #05080a; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #4fc3f7; }
+        #orb-root { width: 100%; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .orb-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; width: 100%; }
+        .orb-group { display: flex; gap: 2px; align-items: center; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 4px; }
+        .orb-label { font-size: 12px; color: #ffa726; font-weight: bold; margin-right: 4px; min-width: 20px; }
+        .orb-box { 
+            width: 24px; height: 24px; border: 1px solid #37474f; background: #05080a; 
+            display: flex; align-items: center; justify-content: center; font-size: 16px; 
+            color: #4fc3f7; border-radius: 2px;
+        }
+        .b-s { border-color: #fb8c00; } .b-p { border-color: #8e24aa; } .b-d { border-color: #546e7a; } .b-f { border-color: #43a047; }
         
-        #tooltip { position: fixed; pointer-events: none; opacity: 0; background: #000; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 12px; z-index: 1000; border: 1px solid #444; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        #tooltip { position: fixed; pointer-events: none; opacity: 0; background: #000; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 12px; z-index: 1000; border: 1px solid #444; }
     </style>
 </head>
 <body>
     <div id="tooltip"></div>
     <div id="app-container">
         <div id="main-grid"></div>
-        <div id="f-grid" style="margin-top: 5px;"></div>
+        <div id="f-grid"></div>
+        
         <div id="panel">
             <div id="detay">
                 <div class="box" id="d-name">Element: -</div>
@@ -60,7 +66,7 @@
                 <div class="box" id="d-per">Periyot: -</div>
                 <div class="box" id="d-grp">Grup: -</div>
             </div>
-            <div id="orb-container"></div>
+            <div id="orb-root"></div>
         </div>
     </div>
 
@@ -70,6 +76,17 @@
             "GEÇİŞ METALİ": "#707070", "AMETAL": "#5D0085",
             "SOY GAZ": "#000050", "ZAYIF METAL": "#20B2AA",
             "YARI METAL": "#4682B4", "LANTANİT": "#2E8B57", "AKTİNİT": "#1B801B"
+        };
+
+        const exceptions = {
+            24: {"4s": 1, "3d": 5}, 29: {"4s": 1, "3d": 10},
+            41: {"5s": 1, "4d": 4}, 42: {"5s": 1, "4d": 5}, 43: {"5s": 1, "4d": 6},
+            44: {"5s": 1, "4d": 7}, 45: {"5s": 1, "4d": 8}, 46: {"5s": 0, "4d": 10},
+            47: {"5s": 1, "4d": 10}, 78: {"6s": 1, "5d": 9}, 79: {"6s": 1, "5d": 10},
+            111: {"7s": 1, "6d": 10}, 57: {"6s": 2, "5d": 1}, 58: {"6s": 2, "4f": 1, "5d": 1},
+            64: {"6s": 2, "4f": 7, "5d": 1}, 89: {"7s": 2, "6d": 1}, 90: {"7s": 2, "6d": 2},
+            91: {"7s": 2, "5f": 2, "6d": 1}, 92: {"7s": 2, "5f": 3, "6d": 1},
+            93: {"7s": 2, "5f": 4, "6d": 1}, 96: {"7s": 2, "5f": 7, "6d": 1}, 103: {"7s": 2, "5f": 14, "6d": 1}
         };
 
         const elements = [
@@ -135,17 +152,16 @@
         ];
 
         const classic = ["1A","2A","3B","4B","5B","6B","7B","8B","8B","8B","1B","2B","3A","4A","5A","6A","7A","8A"];
-        const ORB_DATA = [
-            [["1s",1],["2s",1],["2p",3],["3s",1],["3p",3],["4s",1],["3d",5],["4p",3]],
-            [["5s",1],["4d",5],["5p",3],["6s",1],["4f",7],["5d",5]],
-            [["6p",3],["7s",1],["5f",7],["6d",5],["7p",3]]
+        const orbGroups = [
+            ["1s"], ["2s", "2p"], ["3s", "3p"], ["4s", "3d", "4p"], 
+            ["5s", "4d", "5p"], ["6s", "4f", "5d", "6p"], ["7s", "5f", "6d", "7p"]
         ];
+        const orbCaps = { s: 1, p: 3, d: 5, f: 7 };
 
         function init() {
             const main = document.getElementById('main-grid');
             const fgrid = document.getElementById('f-grid');
             
-            // Periyot ve Grup Etiketleri
             for(let i=1; i<=18; i++) {
                 const d = document.createElement('div'); d.className='lbl'; 
                 d.style.gridColumn=i+1; d.style.gridRow=1; d.innerHTML=i+"<br>"+classic[i-1]; main.appendChild(d);
@@ -158,12 +174,11 @@
             elements.forEach(e => {
                 const d = document.createElement('div'); d.className='el';
                 d.style.backgroundColor = colors[e[9]];
-                const symbol = e[1];
                 if(e[6] < 8) { d.style.gridRow=e[6]+1; d.style.gridColumn=e[7]+1; main.appendChild(d); }
                 else { d.style.gridRow=e[6]-7; d.style.gridColumn=e[7]-2; fgrid.appendChild(d); }
-                d.innerHTML = `<span class="el-no">${e[0]}</span><span class="el-sym">${symbol}</span>`;
+                d.innerHTML = `<span class="el-no">${e[0]}</span><span class="el-sym">${e[1]}</span>`;
                 d.onclick = () => update(e, d, colors[e[9]]);
-                d.onmouseenter = (ev) => { 
+                d.onmouseenter = () => { 
                     const tt = document.getElementById('tooltip');
                     tt.innerText = e[2]; tt.style.opacity = 1;
                 };
@@ -173,25 +188,78 @@
                 };
                 d.onmouseleave = () => document.getElementById('tooltip').style.opacity = 0;
             });
-            buildOrbitalEmpty();
             resizer();
         }
 
-        function buildOrbitalEmpty() {
-            const cont = document.getElementById('orb-container');
-            ORB_DATA.forEach(row => {
-                const rDiv = document.createElement('div'); rDiv.className = 'orb-row';
-                row.forEach(item => {
-                    const g = document.createElement('div'); g.className = 'orb-group';
-                    g.innerHTML = `<div class="orb-label">${item[0]}</div>`;
-                    for(let i=0; i<item[1]; i++) {
-                        const b = document.createElement('div'); b.className = 'orb-box';
-                        b.id = `orb-${item[0]}-${i}`; g.appendChild(b);
+        function update(data, el, color) {
+            document.querySelectorAll('.el').forEach(x => x.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('d-name').innerText = "Element: " + data[2];
+            document.getElementById('d-no').innerText = "Atom No: " + data[0];
+            document.getElementById('d-no').style.borderLeftColor = color;
+            document.getElementById('d-ag').innerText = "Kütle: " + data[3];
+            document.getElementById('d-per').innerText = "Periyot: " + data[5];
+            const cls = classic[data[4]-1] || (data[0] >= 57 && data[0] <= 71 ? "Lantanit" : "Aktinit");
+            document.getElementById('d-grp').innerText = `Grup: ${data[4]} (${cls})`;
+            renderOrbitalsDinamik(data[0]);
+        }
+
+        function renderOrbitalsDinamik(atomNo) {
+            const root = document.getElementById('orb-root');
+            root.innerHTML = '';
+            let rem = atomNo;
+
+            orbGroups.forEach(group => {
+                if (rem <= 0) return;
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'orb-row';
+                let rowHasContent = false;
+
+                group.forEach(orbName => {
+                    if (rem <= 0) return;
+                    const type = orbName.slice(-1);
+                    const boxes = orbCaps[type];
+                    let elec;
+
+                    // İstisna kontrolü ve elektron hesabı
+                    if (exceptions[atomNo] && exceptions[atomNo][orbName] !== undefined) {
+                        elec = exceptions[atomNo][orbName];
+                    } else {
+                        elec = Math.min(rem, boxes * 2);
                     }
-                    rDiv.appendChild(g);
+
+                    if (elec > 0 || atomNo >= getMinNoForOrb(orbName)) {
+                        rowHasContent = true;
+                        const grpDiv = document.createElement('div');
+                        grpDiv.className = 'orb-group';
+                        grpDiv.innerHTML = `<div class="orb-label">${orbName}</div>`;
+
+                        for (let i = 0; i < boxes; i++) {
+                            const box = document.createElement('div');
+                            box.className = `orb-box b-${type}`;
+                            let arrow = "";
+                            if (elec > boxes + i) arrow = "⇅";
+                            else if (elec > i) arrow = "↑";
+                            box.innerText = arrow;
+                            grpDiv.appendChild(box);
+                        }
+                        rowDiv.appendChild(grpDiv);
+                        rem -= elec; // Her durumda yerleştirilen kadar eksilt
+                    }
                 });
-                cont.appendChild(rDiv);
+                if (rowHasContent) root.appendChild(rowDiv);
             });
+        }
+
+        function getMinNoForOrb(name) {
+            const sequence = ["1s","2s","2p","3s","3p","4s","3d","4p","5s","4d","5p","6s","4f","5d","6p","7s","5f","6d","7p"];
+            const caps = {s:2, p:6, d:10, f:14};
+            let sum = 0;
+            for(let n of sequence) {
+                if(n === name) return sum + 1;
+                sum += caps[n.slice(-1)];
+            }
+            return 0;
         }
 
         function resizer() {
@@ -203,42 +271,6 @@
             document.getElementById('main-grid').style.gridTemplateColumns = `repeat(19, ${cellSize}px)`;
             document.getElementById('f-grid').style.gridTemplateColumns = `repeat(15, ${cellSize}px)`;
             document.getElementById('f-grid').style.marginLeft = (cellSize * 3) + 'px';
-
-            const tabloW = cellSize * 19;
-            const orbSize = Math.floor((tabloW - 120) / 22);
-            document.querySelectorAll('.orb-box').forEach(b => {
-                b.style.width = orbSize + 'px'; b.style.height = orbSize + 'px';
-            });
-        }
-
-        function update(data, el, color) {
-            document.querySelectorAll('.el').forEach(x => x.classList.remove('active'));
-            el.classList.add('active');
-            document.getElementById('d-name').innerText = "Element: " + data[2];
-            document.getElementById('d-no').innerText = "Atom No: " + data[0];
-            document.getElementById('d-no').style.borderLeftColor = color;
-            document.getElementById('d-ag').innerText = "Kütle: " + data[3];
-            document.getElementById('d-per').innerText = "Periyot: " + data[5];
-            const cls = classic[data[4]-1] || (data[0] >= 57 && data[0] <= 71 ? "Lan" : "Akt");
-            document.getElementById('d-grp').innerText = `Grup: ${data[4]} (${cls})`;
-            fillOrbitals(data[0]);
-        }
-
-        function fillOrbitals(atomNo) {
-            document.querySelectorAll('.orb-box').forEach(b => { b.innerText = ""; b.style.borderColor = "#1c2a3a"; });
-            let rem = atomNo;
-            const seq = [["1s",1],["2s",1],["2p",3],["3s",1],["3p",3],["4s",1],["3d",5],["4p",3],["5s",1],["4d",5],["5p",3],["6s",1],["4f",7],["5d",5],["6p",3],["7s",1],["5f",7],["6d",5],["7p",3]];
-            for (let [name, boxes] of seq) {
-                if (rem <= 0) break;
-                let elec = Math.min(rem, boxes * 2); rem -= elec;
-                for (let i = 0; i < boxes; i++) {
-                    const b = document.getElementById(`orb-${name}-${i}`);
-                    if(!b) continue;
-                    b.style.borderColor = "#4fc3f7"; 
-                    if (elec > i + boxes) b.innerText = "⇅";
-                    else if (elec > i) b.innerText = "↑";
-                }
-            }
         }
 
         window.onresize = resizer;
